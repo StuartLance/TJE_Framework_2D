@@ -2,15 +2,14 @@
 #include "utils.h"
 #include "input.h"
 #include "image.h"
+#include "world.h"
 
 #include <cmath>
+#include <algorithm>
 
 Game* Game::instance = NULL;
 
-Image font;
-Image minifont;
-Image sprite;
-Color bgcolor(130, 80, 100);
+static const char* SOUNDS[] = { "select", "confirm", "key", "door", "alert", "caught", "throw", "land", "exit", "win", "music" };
 
 Game::Game(int window_width, int window_height, SDL_Window* window)
 {
@@ -26,32 +25,51 @@ Game::Game(int window_width, int window_height, SDL_Window* window)
 	time = 0.0f;
 	elapsed_time = 0.0f;
 
-	font.load("data/bitmap-font-white.tga"); //load bitmap-font image
-	minifont.load("data/mini-font-white-4x6.tga"); //load bitmap-font image
-	sprite.load("data/spritesheet.tga"); //example to load an sprite
+	//every asset is loaded once here to avoid hiccups during the game
+	font.load("data/bitmap-font-white.tga");
+	font_black.load("data/bitmap-font-black.tga");
+	minifont.load("data/mini-font-white-4x6.tga");
+	tileset.load("data/tileset.png");
+	player_sheet.load("data/player.png");
+	guard_sheet.load("data/guard.png");
 
-	//enableAudio(); //enable this line if you plan to add audio to your application
-	//synth.playSample("data/coin.wav",1,true);
-	//synth.osc1.amplitude = 0.5;
+	enableAudio();
+	for (const char* name : SOUNDS)
+		synth.loadSample(std::string("data/sounds/") + name + ".wav");
+	synth.playSample("data/sounds/music.wav", 0.25f, true);
+
+	world = new World();
+	stages[STAGE_INTRO] = new IntroStage();
+	stages[STAGE_TUTORIAL] = new TutorialStage();
+	stages[STAGE_PLAY] = new PlayStage();
+	stages[STAGE_END] = new EndStage();
+	current_stage = NULL;
+	setStage(STAGE_INTRO);
+}
+
+void Game::setStage(eStageId id)
+{
+	current_stage = stages[id];
+	current_stage->time_in_stage = 0.0f;
+	current_stage->onEnter();
+	fade_timer = 0.3f;
+}
+
+void Game::playSound(const std::string& name, float volume)
+{
+	synth.playSample("data/sounds/" + name + ".wav", volume, false);
 }
 
 //what to do when the image has to be draw
 void Game::render(void)
 {
-	//Create a new Image (or we could create a global one if we want to keep the previous frame)
 	Image framebuffer(160, 120); //do not change framebuffer size
 
-	//add your code here to fill the framebuffer
-	//...
+	current_stage->render(framebuffer);
 
-	//some new useful functions
-		framebuffer.fill( bgcolor );								//fills the image with one color
-		//framebuffer.drawLine( 0, 0, 100,100, Color::RED );		//draws a line
-		//framebuffer.drawImage( sprite, 0, 0 );					//draws full image
-		framebuffer.drawImage( sprite, 0, 0, framebuffer.width, framebuffer.height );			//draws a scaled image
-		//framebuffer.drawImage( sprite, 0, 0, Area(0,0,14,18) );	//draws only a part of an image
-		framebuffer.drawText( "Hello World", 0, 0, font );				//draws some text using a bitmap font in an image (assuming every char is 7x9)
-		//framebuffer.drawText( toString(time), 1, 10, minifont,4,6);	//draws some text using a bitmap font in an image (assuming every char is 4x6)
+	//fade in after every stage change
+	if (fade_timer > 0)
+		framebuffer.fillBlend(Color(0, 0, 0, (unsigned char)(255 * fade_timer / 0.3f)));
 
 	//send image to screen
 	showFramebuffer(&framebuffer);
@@ -59,43 +77,16 @@ void Game::render(void)
 
 void Game::update(double seconds_elapsed)
 {
-	//Add here your update method
-	//...
-
-	//Read the keyboard state, to see all the keycodes: https://wiki.libsdl.org/SDL_Keycode
-	if (Input::isKeyPressed(SDL_SCANCODE_UP)) //if key up
-	{
-	}
-	if (Input::isKeyPressed(SDL_SCANCODE_DOWN)) //if key down
-	{
-	}
-
-	//example of 'was pressed'
-	if (Input::wasKeyPressed(SDL_SCANCODE_A)) //if key A was pressed
-	{
-	}
-	if (Input::wasKeyPressed(SDL_SCANCODE_Z)) //if key Z was pressed
-	{
-	}
-
-	//to read the gamepad state
-	if (Input::gamepads[0].isButtonPressed(A_BUTTON)) //if the A button is pressed
-	{
-	}
-
-	if (Input::gamepads[0].direction & PAD_UP) //left stick pointing up
-	{
-		bgcolor.set(0, 255, 0);
-	}
+	//avoid huge steps (e.g. when dragging the window)
+	float dt = (float)std::min(seconds_elapsed, 0.05);
+	fade_timer -= dt;
+	current_stage->time_in_stage += dt;
+	current_stage->update(dt);
 }
 
 //Keyboard event handler (sync input)
 void Game::onKeyDown( SDL_KeyboardEvent event )
 {
-	switch(event.keysym.sym)
-	{
-		case SDLK_ESCAPE: must_exit = true; break; //ESC key, kill the app
-	}
 }
 
 void Game::onKeyUp(SDL_KeyboardEvent event)

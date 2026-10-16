@@ -212,7 +212,7 @@ int main(int argc, char **argv)
 	int h = 480;
 
 	//create the game window 
-	SDL_Window* window = createWindow("TJE Game2D", w, h);
+	SDL_Window* window = createWindow("JAILBREAK", w, h);
 	if (!window)
 		return 0;
 

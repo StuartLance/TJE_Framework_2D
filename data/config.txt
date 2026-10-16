@@ -1,0 +1,13 @@
+# JAILBREAK gameplay tuning (key value)
+lives 3
+pebbles_per_level 3
+player_speed 38
+sprint_speed 64
+stamina_max 1.5
+stamina_regen 0.6
+guard_speed 20
+guard_chase_speed 44
+view_range 44
+view_angle 38
+noise_radius 40
+pebble_noise_radius 60

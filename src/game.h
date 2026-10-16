@@ -9,6 +9,9 @@
 #include "image.h"
 #include "utils.h"
 #include "synth.h"
+#include "stage.h"
+
+class World;
 
 class Game
 {
@@ -30,6 +33,23 @@ public:
 
 	//audio
 	Synth synth;
+
+	//assets (loaded once in the constructor)
+	Image font;
+	Image font_black;
+	Image minifont;
+	Image tileset;
+	Image player_sheet;
+	Image guard_sheet;
+
+	//game state
+	World* world;
+	Stage* stages[STAGE_COUNT];
+	Stage* current_stage;
+	float fade_timer;
+
+	void setStage(eStageId id);
+	void playSound(const std::string& name, float volume = 0.5f);
 
 	//ctor
 	Game( int window_width, int window_height, SDL_Window* window );
